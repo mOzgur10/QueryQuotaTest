@@ -1,0 +1,87 @@
+﻿@using QueryQuota.UI.Services
+@using QueryQuota.UI.DTOs
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="modal fade @(IsVisible ? "show d-block" : "")" tabindex="-1" role="dialog" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Register</h5>
+                <button type="button" class="close" @onclick="Close" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input class="form-control mb-2" @bind="Email" placeholder="Email" />
+                <input class="form-control mb-2" type="password" @bind="Password" placeholder="Password" />
+                <input class="form-control mb-2" type="password" @bind="ConfirmPassword" placeholder="Confirm Password" />
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="text-danger">@ErrorMessage</div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" @onclick="RegisterUser">Register</button>
+                <button class="btn btn-secondary" @onclick="Close">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<bool> OnClose { get; set; }
+
+    public bool IsVisible { get; private set; }
+
+    private string Email = "";
+    private string Password = "";
+    private string ConfirmPassword = "";
+    private string? ErrorMessage;
+
+    public void Show()
+    {
+        ErrorMessage = null;
+        Email = "";
+        Password = "";
+        ConfirmPassword = "";
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        IsVisible = false;
+        OnClose.InvokeAsync(false);
+    }
+
+    private async Task RegisterUser()
+    {
+       
+        if (string.IsNullOrWhiteSpace(Email))
+        {
+            ErrorMessage = "Email alanı boş olamaz.";
+            return;
+        }
+
+        if (Password != ConfirmPassword)
+        {
+            ErrorMessage = "Şifreler eşleşmiyor.";
+            return;
+        }
+
+        var user = new UserForRegistrationDTO { Email = Email, Password = Password };
+        var result = await AuthService.RegisterAsync(user);
+
+        if (result.IsAuthenticationSuccessful)
+        {
+            IsVisible = false;
+            await OnClose.InvokeAsync(true);
+            Navigation.NavigateTo("/"); 
+        }
+        else
+        {
+            ErrorMessage = result.ErrorMessage;
+        }
+    }
+}

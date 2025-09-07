@@ -1,0 +1,141 @@
+﻿
+@page "/"
+@using QueryQuota.UI.Services
+@using QueryQuota.UI.DTOs
+
+@inject AuthService AuthService
+@inject SearchService SearchService
+@inject IJSRuntime JS
+@inject NavigationManager NavManager
+
+<h2>
+    🔍 Arama Yap
+    @if (AuthService.IsLoggedIn && !string.IsNullOrEmpty(AuthService.UserEmail))
+    {
+        <small class="text-muted">(@AuthService.UserEmail)</small>
+    }
+</h2>
+
+@if (usageInfo is not null)
+{
+    <div class="mt-3 alert alert-info">
+        <strong>📆 Günlük Kullanım:</strong> @usageInfo.DayUsed / @(usageInfo.DayUsed + usageInfo.DayRemaining) <br />
+        <strong>🔄 Günlük Reset:</strong> @usageInfo.DayResetAtLocal.ToLocalTime().ToString("dd.MM.yyyy HH:mm") <br />
+
+        <strong>🗓️ Aylık Kullanım:</strong> @usageInfo.MonthUsed / @(usageInfo.MonthUsed + usageInfo.MonthRemaining) <br />
+        <strong>🔄 Aylık Reset:</strong> @usageInfo.MonthResetAtLocal.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+    </div>
+}
+
+<!-- Arama Kutusu -->
+<div class="mb-3">
+    <input class="form-control" @bind="searchTerm" placeholder="Aranacak kelimeyi girin..." />
+</div>
+<button class="btn btn-primary" @onclick="OnSearchClicked">Search</button>
+
+@if (searchResults is not null)
+{
+    <h4 class="mt-4">📄 Sonuçlar:</h4>
+    <ul class="list-group">
+        @foreach (var item in searchResults.Items!)
+        {
+            <li class="list-group-item">
+                <strong>@item.Data</strong><br />
+                <small>@item.CreatedAtUtc.ToLocalTime()</small>
+            </li>
+        }
+    </ul>
+}
+
+<!-- Modal for errors -->
+@if (showErrorModal)
+{
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"> Hata Oluştu</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@errorMessage</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string searchTerm = string.Empty;
+    private TrySearchResponseDTO? searchResults;
+    private UsageInfoDTO? usageInfo;
+
+    private bool showErrorModal = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.OnAuthStateChanged += AuthStateChanged;
+
+        if (AuthService.IsLoggedIn)
+        {
+            await LoadUsageInfoAsync();
+        }
+    }
+
+    private async void AuthStateChanged()
+    {
+        if (AuthService.IsLoggedIn)
+        {
+            await LoadUsageInfoAsync();
+        }
+        else
+        {
+            usageInfo = null;
+            searchResults = null;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadUsageInfoAsync()
+    {
+        try
+        {
+            usageInfo = await SearchService.GetUsageAsync();
+        }
+        catch (Exception ex)
+        {
+            usageInfo = null;
+            errorMessage = $"Kullanım bilgisi yüklenemedi: {ex.Message}";
+            showErrorModal = true;
+        }
+    }
+
+    private async Task OnSearchClicked()
+    {
+        try
+        {
+            searchResults = await SearchService.TrySearchAsync(searchTerm);
+
+            if (AuthService.IsLoggedIn)
+            {
+                usageInfo = await SearchService.GetUsageAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            showErrorModal = true;
+        }
+    }
+
+    private void CloseModal()
+    {
+        showErrorModal = false;
+        errorMessage = string.Empty;
+    }
+}

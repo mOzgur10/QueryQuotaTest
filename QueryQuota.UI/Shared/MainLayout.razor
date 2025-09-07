@@ -1,0 +1,30 @@
+﻿@using QueryQuota.UI.Services
+@inherits LayoutComponentBase
+@inject AuthService AuthService
+<PageTitle>QueryQuota.UI</PageTitle>
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+      
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+@code {
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            await AuthService.InitializeAsync();
+            _initialized = true;
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,64 @@
+﻿@using QueryQuota.UI.Services
+@inject AuthService AuthService
+
+<nav class="flex-column">
+    <div class="nav-item px-3 mt-3">
+        @if (!AuthService.IsLoggedIn)
+        {
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary w-100" @onclick="ShowLoginModal">Login</button>
+                <button class="btn btn-secondary w-100" @onclick="ShowRegisterModal">Register</button>
+            </div>
+        }
+        else
+        {
+            <button class="btn btn-primary w-100" @onclick="Logout">Logout</button>
+        }
+    </div>
+</nav>
+
+<LoginModal @ref="loginModal" OnClose="OnModalClose" />
+<RegisterModal @ref="registerModal" OnClose="OnRegisterModalClose" />
+
+@code {
+    private LoginModal? loginModal;
+    private RegisterModal? registerModal;
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += async () =>
+        {
+            await InvokeAsync(StateHasChanged);
+        };
+    }
+
+    private void ShowLoginModal()
+    {
+        loginModal?.Show();
+    }
+    private void ShowRegisterModal()
+    {
+        registerModal?.Show();
+    }
+    private async void Logout()
+    {
+        await AuthService.LogoutAsync();
+        StateHasChanged();
+    }
+
+    private void OnModalClose(bool loggedIn)
+    {
+        if (loggedIn)
+        {
+            StateHasChanged();
+        }
+    }
+    private void OnRegisterModalClose(bool registered)
+    {
+        if (registered)
+        {
+           
+            StateHasChanged();
+        }
+    }
+}
